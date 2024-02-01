@@ -138,25 +138,28 @@ def is_pareto_efficient(valuations: list[list[float]], allocation: list[list[flo
                     if min_weight > tmp > 0:
                         min_weight = tmp
                         index_res = k
+                # also save index of res for the pareto efficient improve
                 G.add_edge(i, j, weight=min_weight, res=index_res)
 
-    GTMP = G.copy()
+    # so can pass the graph without the log changes
+    GTMP = copy.deepcopy(G)
 
     # change all the weight to the log of them
     for edge in GTMP.edges():
         GTMP[edge[0]][edge[1]]['weight'] = math.log(GTMP[edge[0]][edge[1]]['weight'])
 
-    hasNagetive = False
+    # find if has negative circle
+    hasNegative = False
     for node in range(num_player):
         try:
             ans = nx.find_negative_cycle(GTMP, node)
             if find_improve:
-                return alter_to_pareto_efficient(G, ans, valuations, allocation)
+                alter_to_pareto_efficient(G, ans, valuations, allocation)
             return True
         except nx.NetworkXError:
             pass
 
-    return hasNagetive
+    return hasNegative
 
 
 if __name__ == '__main__':
