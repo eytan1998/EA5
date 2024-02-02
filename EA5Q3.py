@@ -1,14 +1,11 @@
 import copy
 import math
 from functools import reduce
-from typing import List
-
 import networkx as nx
-import matplotlib.pyplot as plt
 
 
 def alter_to_pareto_efficient(graph, circle: list, valuations: list[list[float]],
-                              allocation: list[list[float]]) -> list[list[float]]:
+                              allocation: list[list[float]], toPrint = False) -> list[list[float]]:
     # [6, 1, 3]
     # [1, 3, 6]
     # [3, 6, 1]
@@ -47,20 +44,19 @@ def alter_to_pareto_efficient(graph, circle: list, valuations: list[list[float]]
     new_allocation = copy.deepcopy(allocation)
 
     # move allocation to improve
-    new_allocation[circle[0]][R[len(R) - 1]] += E[-1]
-    new_allocation[circle[0]][R[0]] -= E[0]
-    for i in range(1, len(circle) - 1):
+    for i in range(len(circle) - 1):
         new_allocation[circle[i]][R[i - 1]] += E[i - 1]
         new_allocation[circle[i]][R[i]] -= E[i]
 
     # print
-    for i in range(num_player):
-        print(
-            f'=========player {i}==============='
-            f'\npre he got: {sum(allocation[i][j] * valuations[i][j] for j in range(num_res))}'
-            f'\nnow he got:{sum(new_allocation[i][j] * valuations[i][j] for j in range(num_res))}'
-            f'\nimprove by: {sum(new_allocation[i][j] * valuations[i][j] for j in range(num_res)) - sum(allocation[i][j] * valuations[i][j] for j in range(num_res))}'
-            f'\n===================================')
+    if toPrint:
+        for i in range(num_player):
+            print(
+                f'=========player {i}==============='
+                f'\npre he got: {sum(allocation[i][j] * valuations[i][j] for j in range(num_res))}'
+                f'\nnow he got:{sum(new_allocation[i][j] * valuations[i][j] for j in range(num_res))}'
+                f'\nimprove by: {sum(new_allocation[i][j] * valuations[i][j] for j in range(num_res)) - sum(allocation[i][j] * valuations[i][j] for j in range(num_res))}'
+                f'\n===================================')
 
     # for row in range(len(allocation)):
     #     for col in range(len(allocation)):
@@ -72,47 +68,49 @@ def alter_to_pareto_efficient(graph, circle: list, valuations: list[list[float]]
     #     for col in range(len(new_allocation)):
     #         print(new_allocation[row][col], end="  ")
     #     print()
-
     return new_allocation
 
 
 def is_pareto_efficient(valuations: list[list[float]], allocation: list[list[float]], find_improve=False) -> bool:
     '''
+    function to find if given valuations and allocation are pareto efficient. if not you can see improvment.
+    :param valuations: matrix for each player how much he values each resourse
+    :param allocation: matrix for each player how much he got from each resourse
+    :param find_improve: if you want to get new allocation that is better than the current allocation.
+    :return: True if there are no improvements, False otherwise
 
-    :param find_improve:
-    :param valuations:
-    :param allocation:
-    :return:
+    # bad example due to rounding,
+    # we can fix by try to get improve by using find_improve=True and see there are no improvements.
     >>> is_pareto_efficient(\
-        valuations=[[10, 20, 30, 80],\
-                     [40, 30, 20, 10]]\
-         , allocation=[[0, 0.7, 1, 1],\
-                      [1, 0.3, 0, 0]])
+        valuations=[[10, 20, 30, 40],\
+                    [40, 30, 20, 10]]\
+                    \
+        ,allocation=[[0, 0.7, 1, 1],\
+                     [1, 0.3, 0, 0]],find_improve=True)
     True
+
+    # bad example from class
     >>> is_pareto_efficient(valuations=[[6, 1, 3], [1, 3, 6], [3, 6, 1]],\
                             allocation=[[0, 0, 1], [0, 1, 0], [1, 0, 0]])
-    True
+    False
+
+    # the currection from class
     >>> is_pareto_efficient(valuations=[[6, 1, 3],\
                                         [1, 3, 6],\
                                         [3, 6, 1]],\
                             allocation=[[1, 0, 0],\
                                         [0, 0, 1],\
                                         [0, 1, 0]])
-    False
-    >>> valuations = [[10, 5], [8, 6], [6, 7]]
-    >>> allocation = [[1, 0], [0, 1], [1, 1]]
-    >>> is_pareto_efficient(valuations, allocation)
     True
 
-    >>> valuations = [[10, 5], [8, 6], [6, 7]]
-    >>> allocation = [[0, 0], [0, 0], [0, 0]]
-    >>> is_pareto_efficient(valuations, allocation)
-    False
-
-    >>> valuations = [[10, 5], [8, 6], [6, 7]]
-    >>> allocation = [[1, 0], [0, 1], [0, 0]]
-    >>> is_pareto_efficient(valuations, allocation)
-    False
+    # the pirate is pareto efficient.
+    >>> is_pareto_efficient(valuations=[[6, 1, 3]\
+                                       ,[1, 3, 6],\
+                                        [3, 6, 1]],\
+                            allocation=[[1, 1, 1],\
+                                        [0, 0, 0],\
+                                        [0, 0, 0]])
+    True
     '''
     num_player = len(valuations)
     num_res = len(valuations[0])
@@ -133,8 +131,8 @@ def is_pareto_efficient(valuations: list[list[float]], allocation: list[list[flo
                 min_weight = math.inf
                 index_res = -1
                 for k in range(num_res):
-                    if (valuations[i][k]) == 0: continue
-                    tmp = calc_valuation[i][k] / valuations[j][k]
+                    if allocation[i][k] == 0: continue
+                    tmp = valuations[i][k] / valuations[j][k]
                     if min_weight > tmp > 0:
                         min_weight = tmp
                         index_res = k
@@ -148,26 +146,23 @@ def is_pareto_efficient(valuations: list[list[float]], allocation: list[list[flo
     for edge in GTMP.edges():
         GTMP[edge[0]][edge[1]]['weight'] = math.log(GTMP[edge[0]][edge[1]]['weight'])
 
-    # find if has negative circle
-    hasNegative = False
+    # find if it has negative circle
     for node in range(num_player):
         try:
             ans = nx.find_negative_cycle(GTMP, node)
+            # if got here there is negative circle
             if find_improve:
-                alter_to_pareto_efficient(G, ans, valuations, allocation)
-            return True
+                if allocation == alter_to_pareto_efficient(G, ans, valuations, allocation): return True
+            return False
         except nx.NetworkXError:
             pass
-
-    return hasNegative
+    # is pareto efficient
+    return True
 
 
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
-
-    x = is_pareto_efficient(valuations=[[6, 1, 3], [1, 3, 6], [3, 6, 1]],allocation=[[0, 0, 1], [0, 1, 0], [1, 0, 0]], find_improve=True)
-
 
 # Print DiGraph
 #   print("Graph edges:")
